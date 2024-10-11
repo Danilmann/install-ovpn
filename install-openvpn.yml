@@ -1,0 +1,37 @@
+---
+- name: Install and Configure OpenVPN Server on localhost
+  hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+    - name: Check if OpenVPN installation script exists
+      ansible.builtin.stat:
+        path: /tmp/install-create.sh
+      register: script_file
+
+    - name: Download OpenVPN installation script if not present
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/Danilmann/install-ovpn/main/install-create.sh
+        dest: /tmp/install-create.sh
+        mode: '0755'
+      when: not script_file.stat.exists
+
+    - name: Run OpenVPN installation script with bash
+      ansible.builtin.shell: /bin/bash /tmp/install-create.sh
+      register: result
+      ignore_errors: true
+
+    - name: Show script output
+      ansible.builtin.debug:
+        msg: "{{ result.stdout if result.stdout else 'No output' }}"
+
+    - name: Check if script completed successfully
+      ansible.builtin.debug:
+        msg: "Script executed successfully!"
+      when: result.rc == 0
+
+    - name: Check if script failed
+      ansible.builtin.debug:
+        msg: "Script failed with error: {{ result.stderr }}"
+      when: result.rc != 0

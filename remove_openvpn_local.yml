@@ -1,0 +1,32 @@
+---
+- name: Remove OpenVPN if installed on localhost
+  hosts: localhost
+  become: yes
+  tasks:
+
+    - name: Check if remove_openvpn.sh script is already downloaded
+      stat:
+        path: /tmp/remove_openvpn.sh
+      register: script_exists
+
+    - name: Download the remove_openvpn.sh script if not already present
+      get_url:
+        url: https://github.com/Danilmann/install-ovpn/raw/main/remove_openvpn.sh
+        dest: /tmp/remove_openvpn.sh
+        mode: '0755'  # Set permissions to make it executable
+      when: not script_exists.stat.exists
+
+    - name: Run the remove_openvpn.sh script
+      command: /tmp/remove_openvpn.sh
+      register: script_output
+      failed_when: script_output.rc != 0 or "OpenVPN service failed to start" in script_output.stdout
+
+    - name: Display the output of the script if successful
+      debug:
+        var: script_output.stdout
+      when: "'OpenVPN has been successfully removed' in script_output.stdout"
+
+    - name: Notify if OpenVPN was not installed
+      debug:
+        msg: "OpenVPN is not installed on this server."
+      when: "'OpenVPN is not installed on this server' in script_output.stdout"
